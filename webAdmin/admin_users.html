@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Quản lý Người dùng - Blood Admin</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    <style>
+        .card-table { background: white; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.05); overflow: hidden; }
+        table { width: 100%; border-collapse: collapse; }
+        th { background: #f1f3f5; padding: 15px; text-align: left; font-size: 13px; color: #666; text-transform: uppercase; }
+        td { padding: 15px; border-bottom: 1px solid #eee; font-size: 14px; }
+        
+        .user-info { display: flex; align-items: center; gap: 12px; }
+        .user-avatar { width: 35px; height: 35px; background: #e63946; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; }
+        
+        .role-badge { padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: bold; }
+        .role-admin { background: #1d3557; color: white; }
+        .role-user { background: #e9ecef; color: #495057; }
+        
+        .btn-action { border: none; background: none; cursor: pointer; color: #666; transition: 0.2s; padding: 5px; }
+        .btn-action:hover { color: #e63946; }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar">
+        <h2>MANAGE</h2>
+        <div class="menu-group">
+            <a href="statistics.html" class="menu-item"><i class="fa-solid fa-chart-line"></i> Tổng quan</a>
+            <a href="admin.html" class="menu-item"><i class="fa-solid fa-house-medical"></i> Quản lý SOS</a>
+            <a href="admin_events.html" class="menu-item"><i class="fa-solid fa-calendar-check"></i> Sự kiện</a>
+            <a href="admin_users.html" class="menu-item active"><i class="fa-solid fa-users-gear"></i> Người dùng</a>
+        </div>
+        <button class="logout-btn" onclick="logout()"><i class="fa-solid fa-right-from-bracket"></i> Đăng xuất</button>
+    </div>
+
+    <div class="main-content">
+        <div class="page-header">
+            <h1>Quản lý tài khoản người dùng</h1>
+            <div id="user-count" style="font-weight: 600; color: #e63946;">0 thành viên</div>
+        </div>
+
+        <div class="card-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Người dùng</th>
+                        <th>Số điện thoại</th>
+                        <th>Nhóm máu</th>
+                        <th>Vai trò</th>
+                        <th>Ngày tham gia</th>
+                        <th>Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody id="user-list">
+                    </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyDOnAsPdqe1ATLekz5wghdqryxf_kEkSaI",
+            authDomain: "blood-donation-app-ntt-2-cef6f.firebaseapp.com",
+            projectId: "blood-donation-app-ntt-2-cef6f",
+            storageBucket: "blood-donation-app-ntt-2-cef6f.firebasestorage.app",
+            messagingSenderId: "660877873735",
+            appId: "1:660877873735:web:ac59b22d0e2e5cf2a19762"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        // Kiểm tra đăng nhập
+        firebase.auth().onAuthStateChanged(user => { if (!user) window.location.href = 'login.html'; });
+
+        // Lấy danh sách người dùng từ Firestore
+        db.collection("users").orderBy("createdAt", "desc").onSnapshot(snapshot => {
+            const list = document.getElementById('user-list');
+            document.getElementById('user-count').innerText = snapshot.size + " thành viên";
+            list.innerHTML = "";
+
+            snapshot.forEach(doc => {
+                const data = doc.data();
+                const date = data.createdAt ? new Date(data.createdAt.seconds * 1000).toLocaleDateString('vi-VN') : "---";
+                const roleClass = data.role === 'admin' ? 'role-admin' : 'role-user';
+                const firstLetter = data.fullName ? data.fullName.charAt(0).toUpperCase() : "?";
+
+                list.innerHTML += `
+                    <tr>
+                        <td>
+                            <div class="user-info">
+                                <div class="user-avatar">${firstLetter}</div>
+                                <div>
+                                    <div style="font-weight:600">${data.fullName || "Ẩn danh"}</div>
+                                    <div style="font-size:12px; color:#999">${data.email}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td>${data.phone || "Chưa cập nhật"}</td>
+                        <td><b style="color:#e63946">${data.bloodType || "---"}</b></td>
+                        <td><span class="role-badge ${roleClass}">${data.role || 'user'}</span></td>
+                        <td>${date}</td>
+                        <td>
+                            <button title="Đổi quyền Admin" class="btn-action" onclick="toggleAdmin('${doc.id}', '${data.role}')">
+                                <i class="fa-solid fa-user-shield"></i>
+                            </button>
+                            <button title="Xóa tài khoản" class="btn-action" onclick="deleteUser('${doc.id}')">
+                                <i class="fa-solid fa-user-minus"></i>
+                            </button>
+                        </td>
+                    </tr>`;
+            });
+        });
+
+        // Hàm đổi quyền Admin/User
+        async function toggleAdmin(id, currentRole) {
+            const newRole = currentRole === 'admin' ? 'user' : 'admin';
+            if(confirm(`Bạn muốn chuyển tài khoản này sang quyền ${newRole.toUpperCase()}?`)) {
+                await db.collection("users").doc(id).update({ role: newRole });
+            }
+        }
+
+        // Hàm xóa hồ sơ User (Chỉ xóa trên Firestore)
+        async function deleteUser(id) {
+            if(confirm("Lưu ý: Hành động này chỉ xóa hồ sơ người dùng trên Database. Bạn có chắc chắn?")) {
+                await db.collection("users").doc(id).delete();
+            }
+        }
+
+        function logout() { firebase.auth().signOut().then(() => window.location.href = 'login.html'); }
+    </script>
+</body>
+</html>

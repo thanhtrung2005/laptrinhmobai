@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Quản lý Sự kiện - Blood Admin</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    <style>
+        .btn-add { background: #e63946; color: white; border: none; padding: 12px 25px; border-radius: 10px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: 0.3s; }
+        .btn-add:hover { background: #c1121f; transform: translateY(-2px); }
+        
+        .card-table { background: white; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.05); overflow: hidden; margin-top: 20px; }
+        table { width: 100%; border-collapse: collapse; }
+        th { background: #f8f9fa; padding: 15px; text-align: left; color: #1d3557; font-size: 13px; font-weight: 700; text-transform: uppercase; border-bottom: 2px solid #eee; }
+        td { padding: 20px 15px; border-bottom: 1px solid #eee; }
+        
+        .count-badge { background: #ffe3e3; padding: 6px 12px; border-radius: 20px; font-weight: 800; color: #e63946; display: inline-flex; align-items: center; gap: 5px; }
+        
+        .modal { display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(29, 53, 87, 0.6); backdrop-filter: blur(5px); }
+        .modal-content { background: white; margin: 5% auto; padding: 35px; border-radius: 25px; width: 450px; position: relative; }
+        
+        .form-group { margin-bottom: 20px; }
+        input, textarea { width: 100%; padding: 12px 15px; border: 1px solid #ddd; border-radius: 10px; box-sizing: border-box; font-family: inherit; }
+        
+        .btn-edit { color: #457b9d; border: none; background: none; cursor: pointer; font-size: 18px; margin-right: 10px; }
+        .btn-delete { color: #e63946; border: none; background: none; cursor: pointer; font-size: 18px; }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+         <h2>MANAGE</h2>
+        <div class="menu-group">
+            <a href="statistics.html" class="menu-item"><i class="fa-solid fa-chart-line"></i> Tổng quan</a>
+            <a href="admin.html" class="menu-item"><i class="fa-solid fa-house-medical"></i> Quản lý SOS</a>
+            <a href="admin_events.html" class="menu-item active"><i class="fa-solid fa-calendar-check"></i> Sự kiện</a>
+             <a href="admin_users.html" class="menu-item"><i class="fa-solid fa-users-gear"></i> Người dùng</a>
+        </div>
+        <button class="logout-btn" onclick="logout()"><i class="fa-solid fa-right-from-bracket"></i> Đăng xuất</button>
+    </div>
+
+    <div class="main-content">
+        <div class="page-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+            <h1>🗓️ Quản lý Sự kiện</h1>
+            <button class="btn-add" onclick="openModal()"><i class="fa-solid fa-plus-circle"></i> THÊM MỚI</button>
+        </div>
+
+        <div class="card-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Tên Sự kiện</th>
+                        <th>Địa điểm / Thời gian</th>
+                        <th style="text-align: center;">Đăng ký</th>
+                        <th style="text-align: right;">Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody id="event-list"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="eventModal" class="modal">
+        <div class="modal-content">
+            <h2 id="modalTitle">Đăng Sự Kiện Mới</h2>
+            <input type="hidden" id="editEventId"> <div class="form-group">
+                <input type="text" id="eventTitle" placeholder="Tên sự kiện">
+            </div>
+            <div class="form-group">
+                <input type="text" id="eventLocation" placeholder="Địa điểm">
+            </div>
+            <div class="form-group">
+                <input type="date" id="eventDate">
+            </div>
+            <div class="form-group">
+                <textarea id="eventDesc" rows="4" placeholder="Mô tả chi tiết"></textarea>
+            </div>
+            
+            <button class="btn-add" style="width: 100%; justify-content: center;" id="saveBtn" onclick="saveEvent()">
+                LƯU SỰ KIỆN
+            </button>
+            <button onclick="closeModal()" style="width: 100%; background:none; border:none; margin-top:15px; cursor:pointer; color:#888;">Hủy</button>
+        </div>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyDOnAsPdqe1ATLekz5wghdqryxf_kEkSaI",
+            authDomain: "blood-donation-app-ntt-2-cef6f.firebaseapp.com",
+            projectId: "blood-donation-app-ntt-2-cef6f",
+            storageBucket: "blood-donation-app-ntt-2-cef6f.firebasestorage.app",
+            messagingSenderId: "660877873735",
+            appId: "1:660877873735:web:ac59b22d0e2e5cf2a19762"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        function openModal(id = null) {
+            const modal = document.getElementById("eventModal");
+            const title = document.getElementById("modalTitle");
+            const editIdField = document.getElementById("editEventId");
+            
+            if (id) {
+                title.innerText = "Chỉnh sửa Sự kiện";
+                editIdField.value = id;
+                // Lấy dữ liệu cũ đổ vào form
+                db.collection("events").doc(id).get().then(doc => {
+                    const data = doc.data();
+                    document.getElementById('eventTitle').value = data.title;
+                    document.getElementById('eventLocation').value = data.location;
+                    document.getElementById('eventDesc').value = data.description;
+                    if(data.date) {
+                        const dateObj = new Date(data.date.seconds * 1000);
+                        document.getElementById('eventDate').value = dateObj.toISOString().split('T')[0];
+                    }
+                });
+            } else {
+                title.innerText = "Đăng Sự Kiện Mới";
+                editIdField.value = "";
+                document.getElementById('eventTitle').value = "";
+                document.getElementById('eventLocation').value = "";
+                document.getElementById('eventDate').value = "";
+                document.getElementById('eventDesc').value = "";
+            }
+            modal.style.display = "block";
+        }
+
+        function closeModal() { document.getElementById("eventModal").style.display = "none"; }
+
+        // Hiển thị danh sách
+        db.collection("events").orderBy("date", "asc").onSnapshot(snapshot => {
+            const list = document.getElementById('event-list');
+            list.innerHTML = "";
+            snapshot.forEach(doc => {
+                const data = doc.data();
+                const d = data.date ? new Date(data.date.seconds * 1000).toLocaleDateString('vi-VN') : "N/A";
+                list.innerHTML += `
+                    <tr>
+                        <td><b>${data.title}</b></td>
+                        <td>📍 ${data.location}<br><small>📅 ${d}</small></td>
+                        <td style="text-align: center;"><span class="count-badge">${data.registered_count || 0} người</span></td>
+                        <td style="text-align: right;">
+                            <button class="btn-edit" onclick="openModal('${doc.id}')"><i class="fa-solid fa-pen-to-square"></i></button>
+                            <button class="btn-delete" onclick="deleteEvent('${doc.id}')"><i class="fa-solid fa-trash-can"></i></button>
+                        </td>
+                    </tr>`;
+            });
+        });
+
+        // Hàm Lưu (Dùng cho cả Thêm và Sửa)
+        async function saveEvent() {
+            const id = document.getElementById('editEventId').value;
+            const eventData = {
+                title: document.getElementById('eventTitle').value,
+                location: document.getElementById('eventLocation').value,
+                date: firebase.firestore.Timestamp.fromDate(new Date(document.getElementById('eventDate').value)),
+                description: document.getElementById('eventDesc').value,
+                updated_at: firebase.firestore.FieldValue.serverTimestamp()
+            };
+
+            try {
+                if (id) {
+                    await db.collection("events").doc(id).update(eventData); // SỬA
+                    alert("Cập nhật thành công!");
+                } else {
+                    eventData.registered_count = 0;
+                    eventData.created_at = firebase.firestore.FieldValue.serverTimestamp();
+                    await db.collection("events").add(eventData); // THÊM
+                    alert("Đăng thành công!");
+                }
+                closeModal();
+            } catch (e) { alert("Lỗi: " + e.message); }
+        }
+
+        function deleteEvent(id) { if(confirm("Xóa sự kiện?")) db.collection("events").doc(id).delete(); }
+        function logout() { firebase.auth().signOut().then(() => window.location.href = 'login.html'); }
+    </script>
+</body>
+</html>

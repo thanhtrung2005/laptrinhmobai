@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Đăng nhập Admin</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+    <style>
+        body { font-family: 'Inter', sans-serif; background: #f0f2f5; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .card { background: white; padding: 40px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 350px; text-align: center; }
+        .logo { font-size: 50px; color: #e63946; margin-bottom: 20px; }
+        input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
+        button { width: 100%; padding: 12px; background: #e63946; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; margin-top: 10px; }
+        button:disabled { background: #ccc; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="logo"><i class="fa-solid fa-droplet"></i></div>
+        <h2>Hệ Thống Admin</h2>
+        <p style="color: #666; font-size: 14px;">Mạng xã hội Hiến máu</p>
+        <input type="email" id="email" placeholder="Email Admin">
+        <input type="password" id="password" placeholder="Mật khẩu">
+        <button onclick="login()" id="btn">ĐĂNG NHẬP</button>
+    </div>
+
+    <script>
+     const firebaseConfig = {
+  apiKey: "AIzaSyDOnAsPdqe1ATLekz5wghdqryxf_kEkSaI",
+  authDomain: "blood-donation-app-ntt-2-cef6f.firebaseapp.com",
+  projectId: "blood-donation-app-ntt-2-cef6f",
+  storageBucket: "blood-donation-app-ntt-2-cef6f.firebasestorage.app",
+  messagingSenderId: "660877873735",
+  appId: "1:660877873735:web:ac59b22d0e2e5cf2a19762",
+  measurementId: "G-96CDHV9MQ0"
+};
+        // Khởi tạo
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        async function login() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const btn = document.getElementById('btn');
+
+            if (!email || !password) return alert("Nhập đủ thông tin!");
+
+            btn.disabled = true;
+            btn.innerText = "Đang kiểm tra...";
+
+            try {
+                // 1. Đăng nhập
+                const userCredential = await auth.signInWithEmailAndPassword(email, password);
+                
+                // 2. Kiểm tra role trong collection 'users'
+                const userDoc = await db.collection('users').doc(userCredential.user.uid).get();
+
+                if (userDoc.exists && userDoc.data().role === "admin") {
+                    window.location.href = "admin.html";
+                } else {
+                    alert("Bạn không phải Admin!");
+                    await auth.signOut();
+                    location.reload();
+                }
+            } catch (e) {
+                alert("Lỗi: " + e.message);
+                btn.disabled = false;
+                btn.innerText = "ĐĂNG NHẬP";
+            }
+        }
+    </script>
+</body>
+</html>

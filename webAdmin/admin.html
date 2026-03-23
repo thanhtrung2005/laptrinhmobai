@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Quản lý SOS</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    <style>
+        /* Table Style bổ sung cho trang này */
+        .card-table { background: white; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.05); overflow: hidden; }
+        table { width: 100%; border-collapse: collapse; }
+        th { background: #f1f3f5; padding: 15px; text-align: left; font-size: 13px; color: #666; text-transform: uppercase; }
+        td { padding: 18px 15px; border-bottom: 1px solid #eee; font-size: 14px; }
+        .badge { padding: 5px 12px; border-radius: 20px; font-size: 11px; font-weight: bold; }
+        .badge.pending { background: #fff3cd; color: #856404; }
+        .badge.completed { background: #d4edda; color: #155724; }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+          <h2>MANAGE</h2>
+        <div class="menu-group">
+            <a href="statistics.html" class="menu-item"><i class="fa-solid fa-chart-line"></i> Tổng quan</a>
+            <a href="admin.html" class="menu-item active"><i class="fa-solid fa-house-medical"></i> Quản lý SOS</a>
+            <a href="admin_events.html" class="menu-item"><i class="fa-solid fa-calendar-check"></i> Sự kiện</a>
+             <a href="admin_users.html" class="menu-item"><i class="fa-solid fa-users-gear"></i> Người dùng</a>
+        </div>
+        <button class="logout-btn" onclick="logout()"><i class="fa-solid fa-right-from-bracket"></i> Đăng xuất</button>
+    </div>
+
+    <div class="main-content">
+        <div class="page-header">
+            <h1>Quản lý ca SOS khẩn cấp</h1>
+            <div id="status-sync" style="font-size: 12px; color: #666;">Đang đồng bộ...</div>
+        </div>
+
+        <div class="card-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Nhóm máu</th>
+                        <th>Địa điểm</th>
+                        <th>Nội dung</th>
+                        <th>Thời gian</th>
+                        <th>Trạng thái</th>
+                        <th>Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody id="sos-list"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyDOnAsPdqe1ATLekz5wghdqryxf_kEkSaI",
+            authDomain: "blood-donation-app-ntt-2-cef6f.firebaseapp.com",
+            projectId: "blood-donation-app-ntt-2-cef6f",
+            storageBucket: "blood-donation-app-ntt-2-cef6f.firebasestorage.app",
+            messagingSenderId: "660877873735",
+            appId: "1:660877873735:web:ac59b22d0e2e5cf2a19762"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        firebase.auth().onAuthStateChanged(user => { if (!user) window.location.href = 'login.html'; });
+
+        db.collection("sos_requests").orderBy("created_at", "desc").onSnapshot(snapshot => {
+            const list = document.getElementById('sos-list');
+            list.innerHTML = "";
+            snapshot.forEach(doc => {
+                const data = doc.data();
+                const time = data.created_at ? new Date(data.created_at.seconds * 1000).toLocaleString('vi-VN') : "...";
+                const sText = data.status === 'completed' ? 'Hoàn thành' : 'Đang chờ';
+                const sClass = data.status === 'completed' ? 'completed' : 'pending';
+
+                list.innerHTML += `
+                    <tr>
+                        <td><b style="color:#e63946; font-size:16px;">${data.blood_type}</b></td>
+                        <td>${data.location_text}</td>
+                        <td style="max-width:200px">${data.content}</td>
+                        <td>${time}</td>
+                        <td><span class="badge ${sClass}">${sText}</span></td>
+                        <td><button onclick="deleteSOS('${doc.id}')" style="border:none; background:none; color:#e63946; cursor:pointer;"><i class="fa-solid fa-trash-can"></i></button></td>
+                    </tr>`;
+            });
+            document.getElementById('status-sync').innerText = "Cập nhật lúc: " + new Date().toLocaleTimeString();
+        });
+
+        function deleteSOS(id) { if(confirm("Xóa ca SOS này?")) db.collection("sos_requests").doc(id).delete(); }
+        function logout() { firebase.auth().signOut().then(() => window.location.href = 'login.html'); }
+    </script>
+</body>
+</html>

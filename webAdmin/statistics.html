@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Thống kê</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    <style>
+        .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+        .stat-card { background: white; padding: 30px; border-radius: 20px; text-align: center; box-shadow: 0 5px 15px rgba(0,0,0,0.05); border-bottom: 5px solid #e63946; }
+        .stat-card i { font-size: 40px; color: #e63946; margin-bottom: 15px; }
+        .stat-card h3 { font-size: 32px; color: #1d3557; margin: 0; }
+        .stat-card p { color: #666; font-size: 14px; text-transform: uppercase; font-weight: bold; margin-top: 5px; }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+         <h2>MANAGE</h2>
+        <div class="menu-group">
+            <a href="statistics.html" class="menu-item active"><i class="fa-solid fa-chart-line"></i> Tổng quan</a>
+            <a href="admin.html" class="menu-item"><i class="fa-solid fa-house-medical"></i> Quản lý SOS</a>
+            <a href="admin_events.html" class="menu-item"><i class="fa-solid fa-calendar-check"></i> Sự kiện</a>
+             <a href="admin_users.html" class="menu-item"><i class="fa-solid fa-users-gear"></i> Người dùng</a>
+        </div>
+        <button class="logout-btn" onclick="logout()"><i class="fa-solid fa-right-from-bracket"></i> Đăng xuất</button>
+    </div>
+
+    <div class="main-content">
+        <div class="page-header">
+            <h1>Thống kê hệ thống</h1>
+        </div>
+        <div class="stats-grid">
+            <div class="stat-card"><i class="fa-solid fa-truck-medical"></i><h3 id="total-sos">0</h3><p>Tổng ca SOS</p></div>
+            <div class="stat-card" style="border-color:#2a9d8f"><i class="fa-solid fa-circle-check" style="color:#2a9d8f"></i><h3 id="done-sos">0</h3><p>Đã hoàn thành</p></div>
+            <div class="stat-card" style="border-color:#457b9d"><i class="fa-solid fa-calendar-day" style="color:#457b9d"></i><h3 id="total-events">0</h3><p>Tổng sự kiện</p></div>
+        </div>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyDOnAsPdqe1ATLekz5wghdqryxf_kEkSaI",
+            authDomain: "blood-donation-app-ntt-2-cef6f.firebaseapp.com",
+            projectId: "blood-donation-app-ntt-2-cef6f",
+            storageBucket: "blood-donation-app-ntt-2-cef6f.firebasestorage.app",
+            messagingSenderId: "660877873735",
+            appId: "1:660877873735:web:ac59b22d0e2e5cf2a19762"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        db.collection("sos_requests").onSnapshot(snap => {
+            document.getElementById('total-sos').innerText = snap.size;
+            let done = 0; snap.forEach(doc => { if(doc.data().status==='completed') done++; });
+            document.getElementById('done-sos').innerText = done;
+        });
+        db.collection("events").onSnapshot(snap => { document.getElementById('total-events').innerText = snap.size; });
+        function logout() { firebase.auth().signOut().then(() => window.location.href = 'login.html'); }
+    </script>
+</body>
+</html>
